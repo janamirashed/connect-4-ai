@@ -691,6 +691,18 @@ function renderSvgTree(root) {
   treeSvg.innerHTML = "";
   if (!root) return;
 
+  // assign unique string id to every node if not already present
+  let idCounter = 0;
+  function assignIds(node) {
+    if (!node.id) {
+      node.id = `node_${idCounter++}`;
+    }
+    if (node.children) {
+      node.children.forEach(assignIds);
+    }
+  }
+  assignIds(root);
+
   const vpWidth = treeViewport.clientWidth || 800;
   const layout = computeTreeLayout(root, vpWidth);
   // always set svg to 100% of the viewport width; viewBox handles scaling

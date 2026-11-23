@@ -76,6 +76,13 @@ def ai_move():
     if current_board.is_full():
         return error("Game is already over")
 
+    data = request.get_json() or {}
+    if "k" in data:
+        try:
+            current_depth_k = max(1, int(data["k"]))
+        except (TypeError, ValueError):
+            pass
+
     minimax = Minimax(depth_k=current_depth_k)
     col, value, tree, nodes, elapsed = minimax.get_best_move(current_board)
 
@@ -83,11 +90,14 @@ def ai_move():
         return error("AI has no valid move")
 
     return jsonify(board_payload({
+        "success": True,
         "row": current_board.landing_row(col),
         "col": col,
         "value": value,
+        "minimax_value": value,
         "tree": tree.to_dict(),
         "time": elapsed,
+        "time_taken": elapsed,
         "nodes_expanded": nodes,
     }))
 
