@@ -522,120 +522,99 @@ function buildDemoTree(bestCol) {
   };
 }
 
-// generate timeline of steps for the step-by-step playback
+// generate dynamic trace steps for any minimax tree (including real backend trees)
 function generateMockTraceSteps(root) {
+  // assign consistent unique ids across the tree first
+  let counter = 0;
+  function assignIds(node) {
+    if (!node.id) {
+      node.id = `node_${counter++}`;
+    }
+    if (node.children) {
+      node.children.forEach(assignIds);
+    }
+  }
+  assignIds(root);
+
   const steps = [];
 
-  // step 0: initial visit root
-  steps.push({
-    activeId: "n0",
-    narrative: "Start Minimax at root node (MAX / CPU). Initial bounds: α = -∞, β = +∞.",
-    state: { n0: { val: "?", alpha: "-∞", beta: "+∞", active: true } }
-  });
+  function fmtVal(v) {
+    if (v === null || v === undefined) return "?";
+    return typeof v === "number" && v > 0 ? `+${v}` : `${v}`;
+  }
 
-  // step 1: explore first child (n1)
-  steps.push({
-    activeId: "n1",
-    narrative: "Explore Column " + (root.children[0].move_col) + " (MIN / Human). Inherit α = -∞, β = +∞.",
-    state: { n1: { val: "?", alpha: "-∞", beta: "+∞", active: true } }
-  });
+  function fmtBound(b) {
+    if (b === null || b === undefined) return "?";
+    return `${b}`;
+  }
 
-  // step 2: evaluate leaf n1_1
-  steps.push({
-    activeId: "n1_1",
-    narrative: "Leaf reached at depth 2 (Column 3). Evaluated heuristic h = +18.",
-    state: { n1_1: { val: "18", alpha: "-∞", beta: "+∞", active: true } }
-  });
+  function traverse(node, parentNode = null) {
+    const isRoot = !parentNode;
+    const isMax = node.player_type === "MAX";
+    const roleName = isMax ? "MAX (CPU)" : "MIN (Human)";
+    const colText = node.move_col !== null && node.move_col !== undefined ? `Column ${node.move_col + 1}` : "Root";
 
-  // step 3: update n1 with leaf n1_1
-  steps.push({
-    activeId: "n1",
-    narrative: "Backtrack to MIN (n1). Update β = min(+∞, 18) = 18. Bound: [α: -∞, β: 18].",
-    state: { n1: { val: "18", alpha: "-∞", beta: "18", active: true } }
-  });
+    if (node.pruned) {
+      steps.push({
+        activeId: node.id,
+        narrative: `Pruned branch at ${colText} (${roleName}). Cut off by Alpha-Beta bounds without further evaluation.`,
+        state: { [node.id]: { pruned: true } }
+      });
+      return;
+    }
 
-  // step 4: evaluate leaf n1_2
-  steps.push({
-    activeId: "n1_2",
-    narrative: "Leaf reached at depth 2 (Column 4). Evaluated heuristic h = +14.",
-    state: { n1_2: { val: "14", alpha: "-∞", beta: "18", active: true } }
-  });
+    // step A: visit node
+    if (isRoot) {
+      steps.push({
+        activeId: node.id,
+        narrative: `Start Minimax search at root (${roleName}). Initial bounds: [α: ${fmtBound(node.alpha)}, β: ${fmtBound(node.beta)}].`,
+        state: { [node.id]: { val: "?", alpha: fmtBound(node.alpha), beta: fmtBound(node.beta) } }
+      });
+    } else {
+      steps.push({
+        activeId: node.id,
+        narrative: `Explore ${colText} (${roleName}) at depth ${node.depth}. Current bounds: [α: ${fmtBound(node.alpha)}, β: ${fmtBound(node.beta)}].`,
+        state: { [node.id]: { val: "?", alpha: fmtBound(node.alpha), beta: fmtBound(node.beta) } }
+      });
+    }
 
-  // step 5: update n1 with leaf n1_2
-  steps.push({
-    activeId: "n1",
-    narrative: "Backtrack to MIN (n1). Update β = min(18, 14) = 14. Bound: [α: -∞, β: 14].",
-    state: { n1: { val: "14", alpha: "-∞", beta: "14", active: true } }
-  });
+    // if leaf node
+    if (!node.children || node.children.length === 0) {
+      const hVal = fmtVal(node.heuristic_value ?? node.minimax_value);
+      steps.push({
+        activeId: node.id,
+        narrative: `Leaf reached at ${colText} (depth ${node.depth}). Evaluated heuristic value h = ${hVal}.`,
+        state: { [node.id]: { val: hVal, alpha: fmtBound(node.alpha), beta: fmtBound(node.beta) } }
+      });
+      return;
+    }
 
-  // step 6: evaluate leaf n1_3
-  steps.push({
-    activeId: "n1_3",
-    narrative: "Leaf reached at depth 2 (Column 2). Evaluated heuristic h = +20. Greater than current β (14), ignored by MIN.",
-    state: { n1_3: { val: "20", alpha: "-∞", beta: "14", active: true } }
-  });
+    // traverse children
+    for (const child of node.children) {
+      traverse(child, node);
 
-  // step 7: finish n1, update root n0
-  steps.push({
-    activeId: "n0",
-    narrative: "Backtrack to root (MAX). Update α = max(-∞, 14) = 14. Root value becomes 14. Best move: Col " + root.children[0].move_col + ".",
-    state: { n0: { val: "14", alpha: "14", beta: "+∞", active: true } }
-  });
+      // step B: update parent after child evaluation
+      if (!child.pruned) {
+        steps.push({
+          activeId: node.id,
+          narrative: `Backtrack to ${roleName} (${colText}). Updating minimax value to ${fmtVal(node.minimax_value)} and bounds: [α: ${fmtBound(node.alpha)}, β: ${fmtBound(node.beta)}].`,
+          state: { [node.id]: { val: fmtVal(node.minimax_value), alpha: fmtBound(node.alpha), beta: fmtBound(node.beta) } }
+        });
+      }
+    }
+  }
 
-  // step 8: explore second child n2
-  steps.push({
-    activeId: "n2",
-    narrative: "Explore Column " + (root.children[1].move_col) + " (MIN). Inherit α = 14, β = +∞.",
-    state: { n2: { val: "?", alpha: "14", beta: "+∞", active: true } }
-  });
+  traverse(root);
 
-  // step 9: evaluate leaf n2_1
-  steps.push({
-    activeId: "n2_1",
-    narrative: "Leaf reached at depth 2 (Column 3). Evaluated heuristic h = +8.",
-    state: { n2_1: { val: "8", alpha: "14", beta: "+∞", active: true } }
-  });
+  // final completion step
+  const bestColText = root.children && root.children.length > 0 && root.children[0].move_col !== null
+    ? `Column ${root.children[0].move_col + 1}`
+    : "selected column";
 
-  // step 10: update n2 and PRUNE!
   steps.push({
-    activeId: "n2",
-    narrative: "Backtrack to MIN (n2). Update β = min(+∞, 8) = 8. Now β (8) ≤ α (14) -> ALPHA-BETA PRUNING triggered! Remaining child (Col 4) is PRUNED!",
-    state: { n2: { val: "8", alpha: "14", beta: "8", active: true }, n2_2: { pruned: true } }
-  });
-
-  // step 11: explore third child n3
-  steps.push({
-    activeId: "n3",
-    narrative: "Explore Column " + (root.children[2].move_col) + " (MIN). Inherit α = 14, β = +∞.",
-    state: { n3: { val: "?", alpha: "14", beta: "+∞", active: true } }
-  });
-
-  // step 12: evaluate leaf n3_1
-  steps.push({
-    activeId: "n3_1",
-    narrative: "Leaf reached at depth 2 (Column 1). Evaluated heuristic h = +6.",
-    state: { n3_1: { val: "6", alpha: "14", beta: "+∞", active: true } }
-  });
-
-  // step 13: update n3 and PRUNE!
-  steps.push({
-    activeId: "n3",
-    narrative: "Backtrack to MIN (n3). Update β = 6. Now β (6) ≤ α (14) -> PRUNED remaining child (Col 2)!",
-    state: { n3: { val: "6", alpha: "14", beta: "6", active: true }, n3_2: { pruned: true } }
-  });
-
-  // step 14: explore n4 and PRUNE immediately
-  steps.push({
-    activeId: "n4",
-    narrative: "Node n4 (Col 7) cutoff immediately by search bounds. PRUNED!",
-    state: { n4: { pruned: true } }
-  });
-
-  // step 15: final optimal decision
-  steps.push({
-    activeId: "n0",
-    narrative: "Minimax search completed! Root MAX value = +14. Optimal action selected: Column " + root.children[0].move_col + ".",
-    state: { n0: { val: "14", alpha: "14", beta: "+∞", active: true } }
+    activeId: root.id,
+    narrative: `Minimax search complete! Root MAX value = ${fmtVal(root.minimax_value)}. Best move decided: ${bestColText}.`,
+    state: { [root.id]: { val: fmtVal(root.minimax_value), alpha: fmtBound(root.alpha), beta: fmtBound(root.beta) } }
   });
 
   return steps;
