@@ -643,7 +643,7 @@ function computeTreeLayout(root, availableWidth = 900) {
 
   // 2. assign x and y coordinates (leave space on left for level indicator badges)
   const leftMargin = 100;
-  const slotWidth = Math.max(90, (availableWidth - leftMargin - 40) / Math.max(root.leafCount, 8));
+  const slotWidth = Math.max(100, (availableWidth - leftMargin - 40) / Math.max(root.leafCount, 8));
   const totalTreeWidth = Math.max(root.leafCount * slotWidth + leftMargin + 80, availableWidth);
 
   function assignPositions(node, leftBound, depth) {
@@ -665,7 +665,7 @@ function computeTreeLayout(root, availableWidth = 900) {
   return { width: totalTreeWidth, height: (maxDepth + 1) * levelHeight + 60, maxDepth, levelHeight };
 }
 
-// render full svg tree — clamp width to viewport so no horizontal scroll appears
+// render full svg tree at readable dimensions
 function renderSvgTree(root) {
   treeSvg.innerHTML = "";
   if (!root) return;
@@ -684,46 +684,30 @@ function renderSvgTree(root) {
 
   const vpWidth = treeViewport.clientWidth || 800;
   const layout = computeTreeLayout(root, vpWidth);
-  // always set svg to 100% of the viewport width; viewBox handles scaling
-  treeSvg.setAttribute("width", "100%");
+  // set svg to natural layout dimensions so nodes are comfortably sized and readable
+  treeSvg.setAttribute("width", layout.width);
   treeSvg.setAttribute("height", layout.height);
   treeSvg.setAttribute("viewBox", `0 0 ${layout.width} ${layout.height}`);
 
-  const levelsGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
-  levelsGroup.id = "tree-levels-group";
+  // render sticky level labels on the left side (MAX / MIN)
+  const levelsCol = document.getElementById("tree-levels-column");
+  if (levelsCol) {
+    levelsCol.innerHTML = "";
+    for (let d = 0; d <= layout.maxDepth; d++) {
+      const isMax = d % 2 === 0;
+      const y = d * layout.levelHeight + 50;
+      const badge = document.createElement("div");
+      badge.className = `tree-level-badge ${isMax ? "max" : "min"}`;
+      badge.style.top = `${y - 16}px`;
+      badge.textContent = isMax ? "▲ MAX" : "▼ MIN";
+      levelsCol.appendChild(badge);
+    }
+  }
+
   const linesGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
   linesGroup.id = "tree-lines-group";
   const nodesGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
   nodesGroup.id = "tree-nodes-group";
-
-  // draw level labels on the left side (MAX / MIN)
-  for (let d = 0; d <= layout.maxDepth; d++) {
-    const isMax = d % 2 === 0;
-    const y = d * layout.levelHeight + 50;
-
-    const levelG = document.createElementNS("http://www.w3.org/2000/svg", "g");
-    levelG.setAttribute("transform", `translate(16, ${y})`);
-
-    // level badge box
-    const badgeBg = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-    badgeBg.className.baseVal = `tree-level-badge-bg ${isMax ? "max" : "min"}`;
-    badgeBg.setAttribute("x", 0);
-    badgeBg.setAttribute("y", -16);
-    badgeBg.setAttribute("width", 72);
-    badgeBg.setAttribute("height", 32);
-    badgeBg.setAttribute("rx", 10);
-    levelG.appendChild(badgeBg);
-
-    // level text
-    const textRole = document.createElementNS("http://www.w3.org/2000/svg", "text");
-    textRole.className.baseVal = `tree-level-text-role ${isMax ? "max" : "min"}`;
-    textRole.setAttribute("x", 36);
-    textRole.setAttribute("y", 4);
-    textRole.textContent = isMax ? "▲ MAX" : "▼ MIN";
-    levelG.appendChild(textRole);
-
-    levelsGroup.appendChild(levelG);
-  }
 
   // draw branches
   function drawBranches(node) {
@@ -777,6 +761,8 @@ function renderSvgTree(root) {
   function drawNodes(node) {
     const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
     g.id = `node-${node.id}`;
+    g.setAttribute("data-x", node.x);
+    g.setAttribute("data-y", node.y);
     g.className.baseVal = `tree-node-group ${node.player_type.toLowerCase()} ${node.pruned ? "pruned" : ""}`;
     g.setAttribute("transform", `translate(${node.x}, ${node.y})`);
 
@@ -826,7 +812,6 @@ function renderSvgTree(root) {
   drawBranches(root);
   drawNodes(root);
 
-  treeSvg.appendChild(levelsGroup);
   treeSvg.appendChild(linesGroup);
   treeSvg.appendChild(nodesGroup);
 }
@@ -842,6 +827,17 @@ function setupTreePlayback(tree, steps) {
   stepSlider.max = Math.max(0, playbackSteps.length - 1);
   stepSlider.value = 0;
   updatePlaybackUI();
+
+  // center root in viewport
+  setTimeout(() => {
+    if (currentTreeData && typeof currentTreeData.x === "number") {
+      treeViewport.scrollTo({
+        left: Math.max(0, currentTreeData.x - treeViewport.clientWidth / 2),
+        top: 0,
+        behavior: "smooth"
+      });
+    }
+  }, 50);
 }
 
 // update active step in tree playback
@@ -858,11 +854,20 @@ function updatePlaybackUI() {
   const allNodes = treeSvg.querySelectorAll(".tree-node-group");
   allNodes.forEach(n => n.classList.remove("active"));
 
-  // highlight active node
+  // highlight active node and keep it centered in view
   if (current.activeId) {
     const activeEl = document.getElementById(`node-${current.activeId}`);
     if (activeEl) {
       activeEl.classList.add("active");
+      const nx = parseFloat(activeEl.getAttribute("data-x"));
+      const ny = parseFloat(activeEl.getAttribute("data-y"));
+      if (!isNaN(nx) && !isNaN(ny)) {
+        treeViewport.scrollTo({
+          left: Math.max(0, nx - treeViewport.clientWidth / 2),
+          top: Math.max(0, ny - treeViewport.clientHeight / 2),
+          behavior: "smooth"
+        });
+      }
     }
   }
 
@@ -949,14 +954,59 @@ speedSelect.addEventListener("change", () => {
 });
 
 btnFitTree.addEventListener("click", () => {
-  if (currentTreeData) renderSvgTree(currentTreeData);
-  treeViewport.scrollTo({ left: 0, top: 0, behavior: "smooth" });
+  if (currentTreeData) {
+    renderSvgTree(currentTreeData);
+    const rootX = currentTreeData.x || (treeViewport.scrollWidth / 2);
+    treeViewport.scrollTo({
+      left: Math.max(0, rootX - treeViewport.clientWidth / 2),
+      top: 0,
+      behavior: "smooth"
+    });
+  }
 });
 
 btnMaximizeTree.addEventListener("click", () => {
   treeBoxPanel.classList.toggle("fullscreen");
   btnMaximizeTree.textContent = treeBoxPanel.classList.contains("fullscreen") ? "EXIT FULLSCREEN" : "FULLSCREEN";
-  if (currentTreeData) renderSvgTree(currentTreeData);
+  if (currentTreeData) {
+    renderSvgTree(currentTreeData);
+    const rootX = currentTreeData.x || (treeViewport.scrollWidth / 2);
+    treeViewport.scrollTo({
+      left: Math.max(0, rootX - treeViewport.clientWidth / 2),
+      top: 0,
+      behavior: "smooth"
+    });
+  }
+});
+
+// mouse drag-to-pan for tree viewport
+let isPanning = false;
+let panStartX = 0, panStartY = 0;
+let panScrollLeft = 0, panScrollTop = 0;
+
+treeViewport.addEventListener("mousedown", (e) => {
+  isPanning = true;
+  treeViewport.classList.add("panning");
+  panStartX = e.pageX;
+  panStartY = e.pageY;
+  panScrollLeft = treeViewport.scrollLeft;
+  panScrollTop = treeViewport.scrollTop;
+});
+
+window.addEventListener("mousemove", (e) => {
+  if (!isPanning) return;
+  e.preventDefault();
+  const dx = e.pageX - panStartX;
+  const dy = e.pageY - panStartY;
+  treeViewport.scrollLeft = panScrollLeft - dx;
+  treeViewport.scrollTop = panScrollTop - dy;
+});
+
+window.addEventListener("mouseup", () => {
+  if (isPanning) {
+    isPanning = false;
+    treeViewport.classList.remove("panning");
+  }
 });
 
 btnRestart.addEventListener("click", resetGame);
