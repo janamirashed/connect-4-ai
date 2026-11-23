@@ -1,13 +1,86 @@
-# Connect 4 AI
+<div align="center">
 
-## Quickstart
+# Connect-4 AI
+
+*An interactive Connect-4 game powered by Minimax with Alpha-Beta pruning — featuring real-time SVG search tree visualization, step-by-step playback, console tree tracing, and performance benchmarking served by Flask.*
+
+![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)
+![Flask](https://img.shields.io/badge/Flask-000000?style=for-the-badge&logo=flask&logoColor=white)
+![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black)
+
+</div>
+
+---
+
+## Overview
+
+Connect-4 AI is an adversarial search game where a human plays against an AI agent powered by depth-limited Minimax with Alpha-Beta pruning. Move ordering utilizes a center-out heuristic to maximize pruning efficiency. The frontend visualizes the decision-making process with an interactive SVG game tree, live alpha-beta bound tracking, and step-by-step playback animation. Additionally, each move generates a full text-based tree trace on the terminal console and supports benchmark evaluations across multiple search depths.
+
+---
+
+## Features
+
+- **Adversarial Minimax Search:** Depth-bounded search with Alpha-Beta pruning across configurable depths (K = 1 to 6)
+- **Multi-Factor Evaluation Heuristic:** Considers connected-4 counts, open 3-in-a-row threats, 2/1-piece potential, and center column control
+- **Center-Out Move Ordering:** Prioritizes high-potential center columns (`[3, 2, 4, 1, 5, 0, 6]`) to produce early alpha-beta cutoffs
+- **Interactive SVG Tree Visualizer:** Renders circular nodes, action badges, prune indicators, and distinct level-wise MAX/MIN margin markers
+- **Dynamic Step-by-Step Playback:** Recursively walks the real Minimax search tree with timeline slider, play/pause controls, speed selection, and live narrative ticker
+- **Console Tree Tracing:** Prints an indented search tree with node bounds and detailed heuristic breakdowns on every AI turn
+- **Performance Benchmarking:** `benchmark.py` evaluates nodes expanded and computation time across different K values
+- **Heuristic Self-Play Engine:** `selfplay.py` runs automated tournaments between competing heuristic weight configurations
+
+---
+
+## Architecture
+
+| Component | Technology | Role |
+|-----------|------------|------|
+| **Board Logic** | Python (`game/board.py`) | 6×7 grid, connected-4 counting, column heights, move validity, and backtracking (`undo_move`) |
+| **Search Engine** | Python (`game/minimax.py`) | Depth-limited Minimax with Alpha-Beta pruning and pruning branch markers |
+| **Heuristics** | Python (`game/heuristic.py`) | Configurable multi-term evaluation function with component breakdown |
+| **Tree Tracer** | Python (`game/tree.py`) | In-memory tree structure, dictionary serializer, and hierarchical console printer |
+| **API Server** | Flask (`app.py`) | REST endpoints (`/api/reset`, `/api/human-move`, `/api/ai-move`) delivering game state & search tree JSON |
+| **Web GUI** | Vanilla JS + CSS | Interactive game board, dynamic SVG tree renderer, playback controller, and metrics panel |
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|------------|
+| Backend | Python 3, Flask |
+| Algorithms | Minimax, Alpha-Beta Pruning, Heuristic Evaluation |
+| Frontend | HTML5, Vanilla JavaScript, CSS3, Inline SVG |
+
+---
+
+## Running Locally
+
+**Prerequisites:** Python 3.10+
 
 ```bash
+# create virtual environment and install dependencies
+python -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
-python3 app.py
+
+# run the web application
+python app.py
 ```
 
-Open `http://127.0.0.1:5000` in your browser.
+App available at `http://127.0.0.1:5000`
+
+### Running Benchmarks & Experiments
+
+```bash
+# run depth benchmark (k=1 to 6)
+python benchmark.py
+
+# run heuristic self-play tournaments
+python selfplay.py
+```
+
+---
 
 ## Implementation Notes
 
@@ -80,3 +153,10 @@ def clone(self) -> "Board":
 - It is a tendency, not a rule. A move that completes a four, blocks one, or sets up a double threat beats a central move that does nothing. That is why center-first is used only for ordering: the other moves are still searched unless pruned.
 - It matters most in the early and middle game; late in the game, the specific cells that complete fours matter more.
 
+</details>
+
+---
+
+## Authors
+
+Jana Rashed · Esraa AbdElHay
