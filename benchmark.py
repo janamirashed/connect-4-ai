@@ -1,25 +1,66 @@
-"""Performance Analysis & Benchmarking Skeleton.
-
-Assignment Deliverables requirement:
-- "analysis of the time taken and nodes expanded by minimax with alpha-beta pruning at different K values"
-- "sample runs and their corresponding minimax trees"
-"""
+# performance analysis & benchmarking for minimax with alpha-beta pruning
+# measures nodes expanded and time taken at different search depths (k values)
 
 from typing import List, Dict, Any
-from game.board import Board
+from game.board import Board, PLAYER_AI, PLAYER_HUMAN
 from game.minimax import Minimax
 
 
+def _build_midgame_board() -> Board:
+    # construct a representative mid-game board (12 pieces played, mixed positions)
+    board = Board()
+    moves = [
+        (3, PLAYER_HUMAN), (3, PLAYER_AI),
+        (2, PLAYER_HUMAN), (4, PLAYER_AI),
+        (3, PLAYER_HUMAN), (5, PLAYER_AI),
+        (2, PLAYER_HUMAN), (4, PLAYER_AI),
+        (1, PLAYER_HUMAN), (5, PLAYER_AI),
+        (3, PLAYER_HUMAN), (6, PLAYER_AI),
+    ]
+    for col, player in moves:
+        board.drop_piece(col, player)
+    return board
+
+
 def run_benchmark(k_values: List[int] = [1, 2, 3, 4, 5, 6]) -> Dict[int, Dict[str, Any]]:
-    """Measure execution time and nodes expanded across different K depths.
-    
-    Returns:
-        Dict mapping K -> {'nodes_expanded': int, 'time_taken': float}
-    """
-    # TODO: Loop over K depths on representative board states and collect metrics
-    pass
+    # measure execution time and nodes expanded across different k depths
+    results: Dict[int, Dict[str, Any]] = {}
+    board = _build_midgame_board()
+
+    for k in k_values:
+        # show_tree=False silences console output during benchmarking
+        ai = Minimax(depth_k=k, show_tree=False)
+        col, value, _tree, nodes, elapsed = ai.get_best_move(board)
+        results[k] = {
+            "nodes_expanded": nodes,
+            "time_taken": round(elapsed, 4),
+            "best_col": col,
+            "minimax_value": round(value, 4),
+        }
+
+    return results
+
+
+def _print_table(results: Dict[int, Dict[str, Any]]) -> None:
+    # print a formatted summary table to stdout
+    header = f"{'K':>4}  {'Nodes Expanded':>16}  {'Time (s)':>10}  {'Best Col':>9}  {'Value':>10}"
+    separator = "-" * len(header)
+    print(separator)
+    print(header)
+    print(separator)
+    for k, data in sorted(results.items()):
+        print(
+            f"{k:>4}  {data['nodes_expanded']:>16}  "
+            f"{data['time_taken']:>10.4f}  "
+            f"{str(data['best_col']):>9}  "
+            f"{data['minimax_value']:>10.4f}"
+        )
+    print(separator)
 
 
 if __name__ == "__main__":
-    print("Running performance benchmark across K values...")
-    # TODO: Run benchmark and display/save summary results for the report
+    print("running performance benchmark across k values...")
+    print("board: 12-piece mid-game state (mixed center/edge play)\n")
+    results = run_benchmark()
+    _print_table(results)
+    print("\ndone.")
