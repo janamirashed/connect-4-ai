@@ -25,6 +25,7 @@ class MinimaxTreeNode:
         self.player_type = player_type
         self.move_col = move_col
         self.heuristic_value = heuristic_value
+        self.heuristic_parts: Optional[tuple] = None  # (fours, threats, center) at leaves
         self.minimax_value: Optional[float] = None
         self.alpha: Optional[float] = None
         self.beta: Optional[float] = None
@@ -42,6 +43,7 @@ class MinimaxTreeNode:
             "player_type": self.player_type,
             "move_col": self.move_col,
             "heuristic_value": _json_num(self.heuristic_value),
+            "heuristic_parts": list(self.heuristic_parts) if self.heuristic_parts else None,
             "minimax_value": _json_num(self.minimax_value),
             "alpha": _json_num(self.alpha),
             "beta": _json_num(self.beta),
@@ -76,6 +78,10 @@ def print_tree_console(
             f"value={_format(node.minimax_value)}")
     if node.heuristic_value is not None:
         line += f"  <- leaf, heuristic={_format(node.heuristic_value)}"
+        if node.heuristic_parts is not None:
+            fours, threats, center = node.heuristic_parts
+            line += (f" [fours={_format(fours)} threats={_format(threats)} "
+                     f"center={_format(center)}]")
     print(line)
 
     if max_depth is not None and node.depth >= max_depth:

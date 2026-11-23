@@ -2,13 +2,17 @@ import time
 import math
 from typing import Tuple
 from .board import Board, PLAYER_AI, PLAYER_HUMAN
-from .heuristic import evaluate_board
+from .heuristic import evaluate_with_parts
 from .tree import MinimaxTreeNode, print_tree_console
 
 
 class Minimax:
-    def __init__(self, depth_k: int = 4):
+    def __init__(self, depth_k: int = 4, evaluate=evaluate_with_parts, show_tree: bool = True):
+        """`evaluate(board) -> (score, parts)` is the heuristic (swappable for self-play);
+        `show_tree=False` silences the per-turn console tree (used by selfplay.py)."""
         self.depth_k = depth_k
+        self.evaluate = evaluate
+        self.show_tree = show_tree
         self.nodes_expanded = 0
 
     def get_best_move(self, board: Board) -> Tuple[int, float, MinimaxTreeNode, int, float]:
@@ -20,7 +24,8 @@ class Minimax:
         elapsed_time = time.perf_counter() - start
 
         # show the traced tree on the console every turn
-        print_tree_console(root)
+        if self.show_tree:
+            print_tree_console(root)
         best_col = next(
             (c.move_col for c in root.children if not c.pruned and c.minimax_value == best_value),
             None,
@@ -42,8 +47,9 @@ class Minimax:
         node.alpha, node.beta = alpha, beta
         # Base case: depth limit reached or board full -> heuristic value
         if remaining_depth == 0 or board.is_full():
-            score = evaluate_board(board)
+            score, parts = self.evaluate(board)  # one pass gives value + breakdown
             node.heuristic_value = score
+            node.heuristic_parts = parts               # shown in the printed tree
             node.minimax_value = score
             return score
 
