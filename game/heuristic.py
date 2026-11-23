@@ -1,6 +1,5 @@
 from .board import Board, PLAYER_EMPTY, PLAYER_HUMAN, PLAYER_AI
 
-# ---- Default weights (tuned via self-play, see selfplay.py) ----
 #   four          : a completed four is permanent, so it dominates everything
 #   three_playable: 3 discs + the empty cell can be dropped into right now
 #   three         : 3 discs + the empty cell is still "in the air"
