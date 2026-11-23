@@ -15,7 +15,7 @@
       <div class="top-controls">
         <div class="depth-control">
           <label for="depth-input">DEPTH (K):</label>
-          <input type="number" id="depth-input" value="4" min="1" max="8" class="top-input">
+          <input type="number" id="depth-input" value="3" min="1" max="6" class="top-input">
         </div>
         <button id="btn-restart" class="pill-btn">RESTART</button>
       </div>
@@ -41,6 +41,7 @@
         </div>
         <span class="card-title">PLAYER 1</span>
         <span class="card-score" id="stat-human-score">0</span>
+        <span class="card-label">CONNECTED 4S</span>
       </div>
 
       <!-- central board column -->
@@ -80,6 +81,7 @@
         </div>
         <span class="card-title">CPU</span>
         <span class="card-score" id="stat-ai-score">0</span>
+        <span class="card-label">CONNECTED 4S</span>
       </div>
     </main>
 
@@ -118,16 +120,62 @@
         </div>
       </div>
 
-      <!-- minimax tree trace box -->
-      <div class="content-box tree-box">
+      <!-- full realistic minimax tree visualizer box -->
+      <div class="content-box tree-box" id="tree-box-panel">
         <div class="box-header">
-          <h2>MINIMAX TREE TRACE</h2>
-          <button id="btn-toggle-tree" class="pill-btn pill-sm">COLLAPSE ALL</button>
+          <div class="header-left-group">
+            <h2>MINIMAX TREE TRACE</h2>
+            <span id="step-counter" class="step-badge">Step 0 / 0</span>
+          </div>
+          <div class="tree-header-actions">
+            <button id="btn-fit-tree" class="pill-btn pill-sm">RESET VIEW</button>
+            <button id="btn-maximize-tree" class="pill-btn pill-sm">FULLSCREEN</button>
+          </div>
         </div>
-        <p class="box-subtext">Live trace of Alpha-Beta pruning &amp; leaf heuristic evaluations</p>
-        
-        <div class="tree-container" id="tree-container">
-          <span class="muted">No tree loaded yet. Drop a piece to trigger AI search!</span>
+
+        <!-- step-by-step playback controls bar (like 8-puzzle) -->
+        <div class="playback-bar">
+          <div class="playback-buttons">
+            <button id="btn-step-first" class="btn-ctrl" title="First Step">⏮</button>
+            <button id="btn-step-prev" class="btn-ctrl" title="Previous Step">◀</button>
+            <button id="btn-step-play" class="btn-ctrl btn-play-pill" title="Play / Pause">▶ PLAY</button>
+            <button id="btn-step-next" class="btn-ctrl" title="Next Step">▶</button>
+            <button id="btn-step-last" class="btn-ctrl" title="Last Step">⏭</button>
+          </div>
+
+          <div class="playback-timeline">
+            <input type="range" id="step-slider" min="0" max="0" value="0" class="step-slider">
+          </div>
+
+          <div class="speed-select-group">
+            <label for="speed-select">SPEED:</label>
+            <select id="speed-select" class="speed-select">
+              <option value="1200">0.5x</option>
+              <option value="600" selected>1x</option>
+              <option value="250">2x</option>
+              <option value="80">Fast</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- live explanation ticker for current step -->
+        <div class="step-narrative" id="step-narrative">
+          Click any column on the board to watch Minimax with Alpha-Beta trace step-by-step!
+        </div>
+
+        <!-- tree legend -->
+        <div class="tree-legend">
+          <div class="legend-item"><span class="legend-dot max"></span> MAX (CPU)</div>
+          <div class="legend-item"><span class="legend-dot min"></span> MIN (Human)</div>
+          <div class="legend-item"><span class="legend-dot active"></span> Active Evaluating</div>
+          <div class="legend-item"><span class="legend-dot pruned"></span> Pruned (Cutoff)</div>
+        </div>
+
+        <!-- realistic svg tree viewport with pan & zoom support -->
+        <div class="tree-viewport" id="tree-viewport">
+          <svg id="tree-svg" class="tree-svg" width="100%" height="480">
+            <!-- svg tree nodes and branches rendered by js -->
+          </svg>
         </div>
       </div>
     </section>
