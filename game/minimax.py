@@ -1,13 +1,6 @@
-"""Minimax Algorithm with Alpha-Beta Pruning Skeleton.
-
-Assignment requirements:
-- AI uses Minimax with alpha-beta pruning.
-- Truncate search at depth K using the heuristic function.
-- Track nodes expanded and execution time for the report.
-- Trace the search tree each turn.
-"""
-
-from typing import Tuple, Optional
+import time
+import math
+from typing import Tuple
 from .board import Board, PLAYER_AI, PLAYER_HUMAN
 from .heuristic import evaluate_board
 from .tree import MinimaxTreeNode, print_tree_console
@@ -15,59 +8,84 @@ from .tree import MinimaxTreeNode, print_tree_console
 
 class Minimax:
     def __init__(self, depth_k: int = 4):
-        """Initialize with depth limit K."""
         self.depth_k = depth_k
         self.nodes_expanded = 0
 
     def get_best_move(self, board: Board) -> Tuple[int, float, MinimaxTreeNode, int, float]:
-        """Find the optimal column for the AI agent.
-        
-        Returns:
-            best_col: Chosen column index
-            best_value: Minimax evaluation of the chosen move
-            tree_root: The traced Minimax search tree
-            nodes_expanded: Number of nodes visited
-            elapsed_time: Search execution time in seconds
-        """
+        """Find the optimal column for the AI agent."""
         self.nodes_expanded = 0
-        # TODO: Initialize root MinimaxTreeNode
-        # TODO: Call minimax_alpha_beta(...)
-        # TODO: Print the tree to console (mandatory requirement)
-        # TODO: Return (best_col, best_value, tree_root, nodes_expanded, elapsed_time)
-        pass
+        root = MinimaxTreeNode(depth=0, player_type="MAX")
+        start = time.perf_counter()
+        best_value = self.minimax_alpha_beta(board, self.depth_k, -math.inf, math.inf, True, root)
+        elapsed_time = time.perf_counter() - start
+
+        # show the traced tree on the console every turn
+        print_tree_console(root)
+        best_col = next(
+            (c.move_col for c in root.children if not c.pruned and c.minimax_value == best_value),
+            None,
+        )
+        return best_col, best_value, root, self.nodes_expanded, elapsed_time
 
     def minimax_alpha_beta(
         self,
         board: Board,
-        depth: int,
+        remaining_depth: int,
         alpha: float,
         beta: float,
         maximizing_player: bool,
-        node: Optional[MinimaxTreeNode] = None
+        node: MinimaxTreeNode
     ) -> float:
-        """Recursive Minimax with Alpha-Beta pruning.
-        
-        Args:
-            board: Current game board state
-            depth: Remaining depth levels (stops at 0)
-            alpha: Best score MAX player can guarantee
-            beta: Best score MIN player can guarantee
-            maximizing_player: True for AI (MAX), False for Human (MIN)
-            node: Current node in the search tree
-            
-        Returns:
-            float: Minimax value
-        """
-        # TODO: Base case: if depth == 0 or board.is_full():
-        #       - evaluate board using evaluate_board(board)
-        #       - record heuristic value on node
-        #       - return evaluated score
-        # TODO: If maximizing_player:
-        #       - iterate over board.get_valid_locations()
-        #       - drop piece, recurse, undo move
-        #       - update alpha, prune if beta <= alpha
-        # TODO: If minimizing_player:
-        #       - iterate over board.get_valid_locations()
-        #       - drop piece, recurse, undo move
-        #       - update beta, prune if beta <= alpha
-        pass
+        """Recursive Minimax with Alpha-Beta pruning."""
+        self.nodes_expanded += 1
+        # Record initial alpha/beta for this node
+        node.alpha, node.beta = alpha, beta
+        # Base case: depth limit reached or board full -> heuristic value
+        if remaining_depth == 0 or board.is_full():
+            score = evaluate_board(board)
+            node.heuristic_value = score
+            node.minimax_value = score
+            return score
+
+        valid_cols = board.get_valid_locations()  # center-out order
+
+        if maximizing_player:
+            best = -math.inf
+            for i, col in enumerate(valid_cols):
+                board.drop_piece(col, PLAYER_AI)
+                child = MinimaxTreeNode(depth=node.depth + 1, player_type="MIN", move_col=col)
+                node.add_child(child)
+                value = self.minimax_alpha_beta(board, remaining_depth - 1, alpha, beta, False, child)
+                board.undo_move(col)  # backtrack
+
+                if value > best:
+                    best = value
+                alpha = max(alpha, best)
+                if beta <= alpha:  # beta cut-off
+                    self._mark_pruned(node, valid_cols[i + 1:], "MIN")
+                    break
+        else:
+            best = math.inf
+            for i, col in enumerate(valid_cols):
+                board.drop_piece(col, PLAYER_HUMAN)
+                child = MinimaxTreeNode(depth=node.depth + 1, player_type="MAX", move_col=col)
+                node.add_child(child)
+                value = self.minimax_alpha_beta(board, remaining_depth - 1, alpha, beta, True, child)
+                board.undo_move(col)  # backtrack
+
+                if value < best:
+                    best = value
+                beta = min(beta, best)
+                if beta <= alpha:  # alpha cut-off
+                    self._mark_pruned(node, valid_cols[i + 1:], "MAX")
+                    break
+
+        node.minimax_value = best
+        return best
+
+    @staticmethod
+    def _mark_pruned(node: MinimaxTreeNode, skipped_cols, child_player: str) -> None:
+        for col in skipped_cols:
+            placeholder = MinimaxTreeNode(depth=node.depth + 1, player_type=child_player, move_col=col)
+            placeholder.pruned = True
+            node.add_child(placeholder)

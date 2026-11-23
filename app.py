@@ -1,11 +1,3 @@
-"""Flask Web Application for Connect 4 AI (GUI & API).
-
-Provides:
-- Web GUI interface for Human vs Computer gameplay
-- Visual representation of the Connect 4 grid, scores, and status
-- Display of the Minimax search tree (Bonus)
-"""
-
 from flask import Flask, render_template, request, jsonify
 from game import Board, Minimax, PLAYER_HUMAN, PLAYER_AI
 
@@ -48,20 +40,40 @@ def human_move():
     # Return JSON with updated board, scores, and status
     pass
 
-
 @app.route("/api/ai-move", methods=["POST"])
 def ai_move():
-    """Compute and play AI move using Minimax with Alpha-Beta pruning."""
+    """Compute and play AI move."""
     global current_board, current_depth_k
 
-    # TODO:
-    # 1. Instantiate Minimax(depth_k=current_depth_k)
-    # 2. Run minimax.get_best_move(current_board)
-    # 3. Drop AI piece into the chosen column
-    # 4. Print minimax tree to console (as required by assignment)
-    # 5. Return JSON with chosen column, updated board, scores, tree data, time, and nodes expanded
-    pass
+    if current_board.is_full():
+        return jsonify({"error": "Game is already over"}), 400
 
+    # Run the search
+    minimax = Minimax(depth_k=current_depth_k)
+    col, value, tree, nodes, elapsed = minimax.get_best_move(current_board)
+
+    # Play the chosen column
+    if col is None or not current_board.drop_piece(col, PLAYER_AI):
+        return jsonify({"error": "AI has no valid move"}), 400
+    row = current_board.landing_row(col)
+
+    state = current_board.to_dict()
+    human, ai = state["scores"]["human"], state["scores"]["ai"]
+    state.update({
+        "row": row,
+        "col": col,
+        "value": value,
+        "tree": tree.to_dict(),
+        "time": elapsed,                 # seconds
+        "nodes_expanded": nodes,
+        "k": current_depth_k,
+        "game_over": state["is_full"],
+        "winner": (
+            ("human" if human > ai else "ai" if ai > human else "draw")
+            if state["is_full"] else None
+        ),
+    })
+    return jsonify(state)
 
 if __name__ == "__main__":
     app.run(debug=True, port=5000)
