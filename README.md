@@ -113,6 +113,7 @@ def clone(self) -> "Board":
     b.grid = [row[:] for row in self.grid]   # copy each row: independent (list of lists)
     b.heights = self.heights[:]              # shallow copy is enough: flat list of ints
     b._col_order = self._col_order           # never modified after creation, so shared
+    b.windows = self.windows
     return b
 ```
 
@@ -154,6 +155,16 @@ def clone(self) -> "Board":
 - It matters most in the early and middle game; late in the game, the specific cells that complete fours matter more.
 
 </details>
+
+---
+
+## GUI
+<div align="center">
+    <img src="assets/GUI_1.png" alt="Connect-4 AI game board" width="48%">
+</div>
+<div align="center">
+  <img src="assets/GUI_2.png" alt="Search tree visualization" width="48%">
+</div>
 
 ---
 
