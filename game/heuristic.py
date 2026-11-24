@@ -1,4 +1,4 @@
-from .board import Board, PLAYER_EMPTY, PLAYER_HUMAN, PLAYER_AI
+from .board import Board, PLAYER_HUMAN, PLAYER_AI
 
 #   four          : a completed four is permanent, so it dominates everything
 #   three_playable: 3 discs + the empty cell can be dropped into right now
@@ -13,7 +13,7 @@ DEFAULT_WEIGHTS = {
     "one": 0.5,
     "center": 0.3,
 }
-
+W_TERMINAL = 10_000   # exact final result must outrank any heuristic estimate
 
 def evaluate_breakdown(board: Board, weights: dict = DEFAULT_WEIGHTS):
     """Return (fours, threats, center) from the AI's perspective.
@@ -69,11 +69,13 @@ def evaluate_with_parts(board: Board, weights: dict = DEFAULT_WEIGHTS):
 
     # Full board: the game is over, so only the exact score counts.
     if board.is_full():
-        return float(fours), parts
+        diff = round(fours / weights["four"])  # AI fours minus human fours, as an int
+        value = float(W_TERMINAL * diff)
+        return value, (value, 0.0, 0.0)
 
     return fours + threats + center, parts
 
 
 def evaluate_board(board: Board) -> float:
-    """Heuristic value from the AI's (MAX) perspective:"""
+    """Heuristic value from the AI's (MAX) perspective"""
     return evaluate_with_parts(board)[0]

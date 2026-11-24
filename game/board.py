@@ -5,9 +5,8 @@ PLAYER_HUMAN = 1
 PLAYER_AI = 2
 
 def get_windows(rows: int, cols: int) -> Tuple[Tuple[Tuple[int, int], ...], ...]:
-    """All 4-cell lines (horizontal, vertical, both diagonals) on a rows x cols
-    board, as tuples of (r, c). Built once per Board and shared with its clones,
-    so counting fours and the heuristic are just loops over a fixed list."""
+    """ All 4-cell lines (horizontal, vertical, both diagonals) on a rows x cols board."""
+    """ Built once per Board."""
     windows = []
     for r in range(rows):
         for c in range(cols):
