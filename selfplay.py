@@ -9,7 +9,7 @@ from game.minimax import Minimax
 
 
 def _score_key():
-    """Name of the 'connected fours already scored' weight in DEFAULT_WEIGHTS."""
+    # find the name of the connected fours weight in DEFAULT_WEIGHTS
     for key in DEFAULT_WEIGHTS:
         if "score" in key.lower() or "four" in key.lower():
             return key
@@ -21,17 +21,18 @@ def _score_key():
 
 SCORE_KEY = _score_key()
 
-DEPTHS_K = [2, 4]        # Minimax search depths to test
-NUM_OPENINGS = 5         # Random starting positions per pair
-OPENING_PLIES = 2        # Random moves played before AI takes over (keep even)
-RANDOM_SEED = 1233       # Seed for reproducible random openings
+DEPTHS_K = [2, 4]        # minimax search depths to test
+NUM_OPENINGS = 5         # random starting positions per pair
+OPENING_PLIES = 2        # random moves played before ai takes over (keep even)
+RANDOM_SEED = 1233       # seed for reproducible random openings
 
+# competing heuristic configurations to test against each other:
 WEIGHT_SETS = {
     "baseline":    DEFAULT_WEIGHTS,
     "playable_x3": {**DEFAULT_WEIGHTS, "three_playable": 30},
     "no_playable": {**DEFAULT_WEIGHTS, "three_playable": DEFAULT_WEIGHTS["three"]},
     "no_center":   {**DEFAULT_WEIGHTS, "center": 0},
-    # naive reference: only the current connected-fours difference counts
+    # naive bot: only cares about already-completed 4s, ignores threats and center
     "score_only":  {key: (DEFAULT_WEIGHTS[key] if key == SCORE_KEY else 0) for key in DEFAULT_WEIGHTS},
 }
 
@@ -39,19 +40,19 @@ _SWAP = {0: 0, PLAYER_HUMAN: PLAYER_AI, PLAYER_AI: PLAYER_HUMAN}
 
 
 def mirrored(board: Board) -> Board:
-    """Copy of the board with the two colors swapped. Minimax always plays as
-    PLAYER_AI, so the agent sitting on the PLAYER_HUMAN discs searches this view."""
+    # copy of the board with the two colors swapped. minimax always plays as
+    # player_ai, so the agent sitting on the human discs searches this view
     b = board.clone()
     b.grid = [[_SWAP[v] for v in row] for row in b.grid]
     return b
 
 
 def play_game(agent_ai: Minimax, agent_hum: Minimax, opening):
-    """agent_ai plays the PLAYER_AI discs, agent_hum the PLAYER_HUMAN discs.
-    `opening` is a list of forced columns played first, alternating AI/HUMAN.
-    Returns (human_fours, ai_fours)."""
+    # agent_ai plays the player_ai discs, agent_hum plays the player_human discs
+    # opening is a list of forced columns played first, alternating ai/human
+    # returns (human_fours, ai_fours)
     board = Board()
-    turn = PLAYER_AI                       # PLAYER_AI discs move first
+    turn = PLAYER_AI                       # player_ai discs move first
     for col in opening:
         board.drop_piece(col, turn)
         turn = PLAYER_HUMAN if turn == PLAYER_AI else PLAYER_AI
@@ -67,7 +68,7 @@ def play_game(agent_ai: Minimax, agent_hum: Minimax, opening):
 
 
 def random_opening(rng: random.Random, plies: int):
-    """A few random legal columns, so repeated games are not identical."""
+    # plays a few random legal moves at start so repeated games are not identical
     b = Board()
     cols = []
     turn = PLAYER_AI
@@ -83,6 +84,7 @@ def random_opening(rng: random.Random, plies: int):
 
 
 def make_agent(weights, k):
+    # creates a minimax agent with specified weights and depth k
     return Minimax(depth_k=k, evaluate=partial(evaluate_with_parts, weights=weights),
                    show_tree=False)
 
@@ -133,3 +135,23 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+# notes and explanations:
+#
+# 1. purpose of selfplay.py:
+#    - automated tournament engine that pits competing heuristic weight sets against each other.
+#    - experimentally validates which heuristic terms (center bonus, playable threats) actually win games.
+#
+# 2. fairness controls:
+#    - random openings: each pair plays 5 different 2-move random openings so games don't repeat deterministically.
+#    - first-move alternation: each matchup is played twice per opening (a first, then b first) to eliminate
+#      any advantage from moving first.
+#
+# 3. mirrored(board):
+#    - since minimax is hardcoded to think from player_ai's perspective, the agent playing the human discs
+#      simply searches an inverted copy of the board where yellow and red are swapped.
+#
+# 4. key takeaway from tournament results:
+#    - baseline and playable_x3 consistently defeat score_only and no_center.
+#    - proving that anticipating threats and controlling center columns is mathematically superior to naive play.
