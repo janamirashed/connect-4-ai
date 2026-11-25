@@ -18,6 +18,18 @@ Connect-4 AI is an adversarial search game where a human plays against an AI age
 
 ---
 
+## GUI
+
+<div align="center">
+  <img src="assets/GUI_1.png" alt="Connect-4 AI game board" width="85%">
+</div>
+<br>
+<div align="center">
+  <img src="assets/GUI_2.png" alt="Search tree visualization" width="85%">
+</div>
+
+---
+
 ## Features
 
 - **Adversarial Minimax Search:** Depth-bounded search with Alpha-Beta pruning across configurable depths (K = 1 to 6)
@@ -155,16 +167,6 @@ def clone(self) -> "Board":
 - It matters most in the early and middle game; late in the game, the specific cells that complete fours matter more.
 
 </details>
-
----
-
-## GUI
-<div align="center">
-    <img src="assets/GUI_1.png" alt="Connect-4 AI game board" width="48%">
-</div>
-<div align="center">
-  <img src="assets/GUI_2.png" alt="Search tree visualization" width="48%">
-</div>
 
 ---
 
